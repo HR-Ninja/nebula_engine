@@ -7,6 +7,7 @@ int main() {
 
 	Engine::Run();
 
+	Engine::Exit();
 
 	return 0;
 }

@@ -4,19 +4,26 @@
 
 namespace Engine {
 
+	OpenGL& ctx = OpenGL::Instance();
+
 	void Start() {
-		OpenGL::Instance().SetWindow(1280, 720, "Test");
+		ctx.SetWindow(1280, 720, "Test");
 	}
 
 	void Run() {
 
-		OpenGL& ctx = OpenGL::Instance();
-
 		while (!ctx.WindowShouldClose()) {
+			ctx.StartFrame();
 
+
+
+			ctx.EndFrame();
 		}
 	}
 
+	void Exit() {
+		ctx.Terminate();
+	}
 
 }
 

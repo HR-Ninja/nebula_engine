@@ -14,8 +14,8 @@ public:
 	}
 
 	// Window access
-	GLFWwindow* GetWindow() {
-		return m_window;
+	const GLFWwindow& GetWindow() {
+		return *m_window;
 	}
 
 	void SetWindow(const int& width, const int& height, const char* title) {
@@ -37,7 +37,27 @@ public:
 		glfwMakeContextCurrent(m_window);
 	}
 
-	bool WindowShouldClose() { return glfwWindowShouldClose(m_window); }
+	bool WindowShouldClose() { 
+		return glfwWindowShouldClose(m_window); 
+	}
+
+	void StartFrame() {
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		glfwPollEvents();
+	}
+
+	void EndFrame() {
+		glfwSwapBuffers(m_window);
+	}
+
+	void Terminate() {
+		if (m_window) {
+			glfwDestroyWindow(m_window);
+		}
+
+		glfwTerminate();
+	}
 
 private:
 	GLFWwindow* m_window = nullptr;
@@ -62,12 +82,7 @@ private:
 	}
 
 	~OpenGL() {
-
-		if (m_window) {
-			glfwDestroyWindow(m_window);
-		}
-
-		glfwTerminate();
+		Terminate();
 	}
 
 	void CheckWindow(const GLFWwindow* window) {
