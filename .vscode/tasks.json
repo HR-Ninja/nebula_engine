@@ -1,0 +1,28 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "CMake: configure",
+        "type": "cmake",
+        "command": "configure",
+        "group": "build",
+        "detail": "CMake configure task"
+      },
+      {
+        "label": "CMake: build",
+        "type": "cmake",
+        "command": "build",
+        "group": "build",
+        "detail": "CMake build task"
+      },
+      {
+        "label": "Run NebulaEngine",
+        "type": "shell",
+        "command": "${workspaceFolder}/build/NebulaEngine.exe",
+        "group": "test",
+        "problemMatcher": [],
+        "detail": "Run NebulaEngine executable"
+      }
+    ]
+  }
+  
