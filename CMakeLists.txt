@@ -16,6 +16,9 @@ file(GLOB SOURCES "src/*.c")
 # Create executable
 add_executable(NebulaEngine ${SOURCES})
 
+# Enable compiler warnings and treat warnings as errors
+target_compile_options(NebulaEngine PRIVATE -Wall -Wextra -Werror)
+
 # Copy the assets directory to the build directory
 add_custom_command(
     TARGET NebulaEngine POST_BUILD

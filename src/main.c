@@ -1,6 +1,7 @@
 #include "gl_backend.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include "cglm/cglm.h"
 
 const char* vertex_shader_src = "#version 330 core\n"
     "layout (location = 0) in vec3 aPos;\n"
@@ -8,9 +9,10 @@ const char* vertex_shader_src = "#version 330 core\n"
 	"layout (location = 2) in vec2 aTexCoord;\n"
 	"out vec3 ourColor;\n"
 	"out vec2 TexCoord;\n"
+	"uniform mat4 transform;\n"
     "void main()\n"
     "{\n"
-    "   gl_Position = vec4(aPos, 1.0);\n"
+    "   gl_Position = transform * vec4(aPos, 1.0);\n"
 		"ourColor = aColor;\n"
 		"TexCoord = aTexCoord;\n"
     "}\0";
@@ -101,6 +103,15 @@ int main() {
 	stbi_image_free(data);
 
 	glUseProgram(shader);
+
+	mat4 trans;
+	glm_mat4_identity(trans);
+
+	vec3 pos = {0.0f, 0.0f, -1.0f};
+    glm_translate(trans, pos);
+
+	uint32_t location = glGetUniformLocation(shader, "transform");
+	glUniformMatrix4fv(location, 1, GL_FALSE, (const float*)trans);
 
 	while (window_active(&w)) {
 		start_frame();

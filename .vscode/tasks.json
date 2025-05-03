@@ -16,9 +16,9 @@
         "detail": "CMake build task"
       },
       {
-        "label": "Run NebulaEngine",
+        "label": "Run NebulaEngine Debug",
         "type": "shell",
-        "command": "${workspaceFolder}/build/NebulaEngine.exe",
+        "command": "${workspaceFolder}/build/debug/NebulaEngine.exe",
         "group": "test",
         "problemMatcher": [],
         "detail": "Run NebulaEngine executable"
