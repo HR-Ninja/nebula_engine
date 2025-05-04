@@ -27,7 +27,7 @@ void window_init(Window* window, const char* title, uint32_t width, uint32_t hei
 
 void start_frame() {
 	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glfwPollEvents();
 }
 
