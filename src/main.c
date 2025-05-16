@@ -50,6 +50,17 @@
         1, 2, 3  // second triangle
     };
 
+typedef struct {
+    vec3 pos;
+    vec3 forward;
+    vec3 up;
+    float pitch;
+    float yaw;
+    float speed;
+} CameraComponent;
+
+void update_camera_system(float delta_time, Entity camera_entity, Component CameraComponentID);
+
 int main() {
 
 	engine_init("Test", 800, 600);
@@ -82,29 +93,37 @@ int main() {
 	mat4 model;
 	glm_mat4_identity(model);
 	//vec3 axis = {0.5f, 1.0f, 0.0f};
-	
-	Camera cam = {
+
+	Component CameraComponentID = register_component(sizeof(CameraComponent));
+	Entity camera_entity = create_entity();
+
+	CameraComponent cam = {
 		.pos = {0.0f, 0.0f, 3.0f},
 		.forward = {0.0f, 0.0f, -1.0f},
-		.up = {0.0f, 1.0f, 0.0f}
+		.up = {0.0f, 1.0f, 0.0f},
+		.pitch = 0.0f,
+		.yaw = -90.0f,
+		.speed = 2.0f
 	};
-	glm_mat4_identity(cam.view);	
 
-	glm_mat4_identity(cam.projection);
-	glm_perspective(glm_rad(45.0f), 800.0f/600.0f, 0.1f, 100.0f, cam.projection);
+	attach_component(camera_entity, CameraComponentID, &cam);
 	
+	mat4 projection;
+	glm_mat4_identity(projection);
+	glm_perspective(glm_rad(45.0f), 800.0f/600.0f, 0.1f, 100.0f, projection);
+	
+	mat4 view;
+	glm_mat4_identity(view);
 
 	uint32_t view_location = glGetUniformLocation(shaders[SHADER_DEFAULT].id, "view");
-	glUniformMatrix4fv(view_location, 1, GL_FALSE, (const float*)cam.view);
+	glUniformMatrix4fv(view_location, 1, GL_FALSE, (const float*)view);
 
 	uint32_t projection_location = glGetUniformLocation(shaders[SHADER_DEFAULT].id, "projection");
-	glUniformMatrix4fv(projection_location, 1, GL_FALSE, (const float*)cam.projection);
+	glUniformMatrix4fv(projection_location, 1, GL_FALSE, (const float*)projection);
 
 	glEnable(GL_DEPTH_TEST);
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	float yaw = -90.0f;
-	float pitch = 0.0f;
 
 	while (window_active()) {
 		start_frame();
@@ -113,38 +132,17 @@ int main() {
 		glfwSetWindowShouldClose(window, GLFW_TRUE);
 	}
 
-	if (is_key_down(GLFW_KEY_W)) {
-		vec3 scaled_front;
-		glm_vec3_scale(cam.forward, 2.0f * delta_time, scaled_front);
-		glm_vec3_add(cam.pos, scaled_front, cam.pos);
-	}
+		update_camera_system(delta_time, camera_entity, CameraComponentID);
 
-	if (is_key_down(GLFW_KEY_S)) {
-		vec3 scaled_back;
-		glm_vec3_scale(cam.forward, 2.0f * delta_time, scaled_back);
-		glm_vec3_sub(cam.pos, scaled_back, cam.pos);
-	}
+		// Rebuild view matrix
+		CameraComponent* cam = get_component(camera_entity, CameraComponentID);
 
-		float sensitivity = 0.1f; // Tune this as needed
-
-		yaw   += input.mouse_delta_x * sensitivity;
-		pitch += input.mouse_delta_y * sensitivity;
-
-		if(pitch > 89.0f)
-			pitch =  89.0f;
-		if(pitch < -89.0f)
-			pitch = -89.0f;
-
-		cam.forward[0] = cos(glm_rad(yaw)) * cos(glm_rad(pitch));
-		cam.forward[1] = sin(glm_rad(pitch));
-		cam.forward[2] = sin(glm_rad(yaw)) * cos(glm_rad(pitch));
-		glm_normalize(cam.forward);
-		vec3 cam_target;
-		glm_vec3_add(cam.pos, cam.forward, cam_target);
-		glm_lookat(cam.pos, cam_target, cam.up, cam.view);
+		vec3 target;
+		glm_vec3_add(cam->pos, cam->forward, target);
+		glm_lookat(cam->pos, target, cam->up, view);
 
 		uint32_t view_location = glGetUniformLocation(shaders[SHADER_DEFAULT].id, "view");
-		glUniformMatrix4fv(view_location, 1, GL_FALSE, (const float*)cam.view);
+		glUniformMatrix4fv(view_location, 1, GL_FALSE, (const float*)view);
 
 		uint32_t model_location = glGetUniformLocation(shaders[SHADER_DEFAULT].id, "model");
 		glUniformMatrix4fv(model_location, 1, GL_FALSE, (const float*)model);
@@ -155,4 +153,33 @@ int main() {
 	}
 
 	return 0;
+}
+
+void update_camera_system(float delta_time, Entity camera_entity, Component CameraComponentID) {
+    CameraComponent* cam = get_component(camera_entity, CameraComponentID);
+
+    // Movement
+    if (is_key_down(GLFW_KEY_W)) {
+        vec3 move;
+        glm_vec3_scale(cam->forward, cam->speed * delta_time, move);
+        glm_vec3_add(cam->pos, move, cam->pos);
+    }
+
+    if (is_key_down(GLFW_KEY_S)) {
+        vec3 move;
+        glm_vec3_scale(cam->forward, cam->speed * delta_time, move);
+        glm_vec3_sub(cam->pos, move, cam->pos);
+    }
+
+    // Mouse look
+    cam->yaw   += input.mouse_delta_x * 0.1f;
+    cam->pitch += input.mouse_delta_y * 0.1f;
+
+    if (cam->pitch > 89.0f) cam->pitch = 89.0f;
+    if (cam->pitch < -89.0f) cam->pitch = -89.0f;
+
+    cam->forward[0] = cos(glm_rad(cam->yaw)) * cos(glm_rad(cam->pitch));
+    cam->forward[1] = sin(glm_rad(cam->pitch));
+    cam->forward[2] = sin(glm_rad(cam->yaw)) * cos(glm_rad(cam->pitch));
+    glm_normalize(cam->forward);
 }

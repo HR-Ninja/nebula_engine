@@ -27,6 +27,8 @@ typedef struct {
 static ComponentArray components[MAX_COMPONENTS];
 static size_t component_usage[MAX_COMPONENTS] = {0};
 
+void remove_component(const Entity e, const Component c);
+
 Entity create_entity() {
     if (free_count > 0) {
         return free_list[--free_count];
