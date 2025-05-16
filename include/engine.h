@@ -1,4 +1,5 @@
 #pragma once
+#include "hecs.h"
 #include"glad/glad.h"
 #include"GLFW/glfw3.h"
 #include "stb_image.h"
@@ -7,6 +8,9 @@
 #include <stdlib.h>
 
 // -----------------------------------------------------------------------------------------------
+
+#define MAX_KEYS GLFW_KEY_LAST + 1
+#define MAX_BUTTONS GLFW_MOUSE_BUTTON_LAST + 1
 
 typedef struct {
     GLuint id;
@@ -33,7 +37,22 @@ typedef struct {
     GLuint vao;
 } Mesh;
 
+typedef struct {
+    double mouse_x, mouse_y;
+    double mouse_delta_x, mouse_delta_y;
+
+    bool keys[MAX_KEYS];
+    bool prev_keys[MAX_KEYS];
+
+    bool buttons[MAX_BUTTONS];
+    bool prev_buttons[MAX_BUTTONS];
+
+} InputState;
+
+
+
 static GLFWwindow* window;
+static InputState input;
 static float last_time;
 static float delta_time;
 static Shader shaders[SHADER_COUNT];
@@ -41,13 +60,22 @@ static Shader shaders[SHADER_COUNT];
 // -----------------------------------------------------------------------------------------------
 
 // Core
-void gl_init();
-void glad_init();
-void window_init(const char* title, GLuint width, GLuint height);
+void engine_init(const char* title, GLuint width, GLuint height);
 void start_frame();
 void end_frame();
 void check_window();
 bool window_active();
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
+void update_input_state();
+
+bool is_key_down(int key);
+bool is_key_pressed(int key);
+bool is_key_released(int key);
+
+bool is_mouse_button_pressed(int btn);
 
 // Shaders
 void load_shader(Shader* s, const char* vert_src_path, const char* frag_src_path);
@@ -60,27 +88,27 @@ void bind_texture(const Texture* t);
 
 
 // -----------------------------------------------------------------------------------------------
-void gl_init() {
-	glfwInit();
+
+void engine_init(const char* title, GLuint width, GLuint height) {
+    glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-}
 
-void glad_init() {
-	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    window = glfwCreateWindow(width, height, title, NULL, NULL);
+	check_window();
+
+	glfwMakeContextCurrent(window);
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
 		printf("Failed to initialize GLAD");
 		exit(-1);
 	}
-}
 
-void window_init(const char* title, GLuint width, GLuint height) {
-
-	window = glfwCreateWindow(width, height, title, NULL, NULL);
-	check_window();
-
-	glfwMakeContextCurrent(window);
+    glfwSetKeyCallback(window, key_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
 }
 
 void start_frame() {
@@ -91,10 +119,13 @@ void start_frame() {
 	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glfwPollEvents();
+    update_input_state();
 }
 
 void end_frame() {
 	glfwSwapBuffers(window);
+    input.mouse_delta_x = 0;
+    input.mouse_delta_y = 0;
 }
 
 bool window_active() {
@@ -178,7 +209,7 @@ void load_texture(Texture* t, const char* path) {
     int width, height, nrChannels;
 	unsigned char *data = stbi_load(path, &width, &height, &nrChannels, 0); 
 
-	glGenTextures(1, t->texture);
+	glGenTextures(1, &t->texture);
 	glBindTexture(GL_TEXTURE_2D, t->texture);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -193,4 +224,43 @@ void load_texture(Texture* t, const char* path) {
 
 void bind_texture(const Texture* t) {
     glBindTexture(GL_TEXTURE_2D, t->texture);
+}
+
+void update_input_state() {
+    memcpy(input.prev_keys, input.keys, MAX_KEYS);
+    memcpy(input.prev_buttons, input.buttons, MAX_BUTTONS);
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key < 0 || key >= MAX_KEYS) return;
+    input.keys[key] = (action != GLFW_RELEASE);
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (button < 0 || button >= MAX_BUTTONS) return;
+    input.buttons[button] = (action != GLFW_RELEASE);
+}
+
+bool first_mouse = true;
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
+
+    if(first_mouse) {
+        input.mouse_x = xpos;
+        input.mouse_y = ypos;
+        first_mouse = false;
+    }
+
+    input.mouse_delta_x = xpos - input.mouse_x;
+    input.mouse_delta_y = input.mouse_y - ypos;
+
+    input.mouse_x = xpos;
+    input.mouse_y = ypos;
+}
+
+bool is_key_down(int key)       { return input.keys[key]; }
+bool is_key_pressed(int key)    { return input.keys[key] && !input.prev_keys[key]; }
+bool is_key_released(int key)   { return !input.keys[key] && input.prev_keys[key]; }
+
+bool is_mouse_button_pressed(int btn) {
+    return input.buttons[btn] && !input.prev_buttons[btn];
 }

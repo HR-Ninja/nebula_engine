@@ -52,9 +52,7 @@
 
 int main() {
 
-	gl_init();
-	window_init("testing", 800, 600);
-	glad_init();
+	engine_init("Test", 800, 600);
 
 	load_shader(&shaders[SHADER_DEFAULT], "assets/vert.glsl", "assets/frag.glsl");
 	use_shader(&shaders[SHADER_DEFAULT]);
@@ -103,25 +101,50 @@ int main() {
 	glUniformMatrix4fv(projection_location, 1, GL_FALSE, (const float*)cam.projection);
 
 	glEnable(GL_DEPTH_TEST);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+	float yaw = -90.0f;
+	float pitch = 0.0f;
 
 	while (window_active()) {
 		start_frame();
-		
-		
-		const float radius = 10.0f;
-		float camX = (float)(sin(glfwGetTime()) * radius);
-		float camZ = (float)(cos(glfwGetTime()) * radius);
-		cam.pos[0] = camX;
-		cam.pos[1] = 2.0f;
-		cam.pos[2] = camZ;
+
+		if(is_key_down(GLFW_KEY_ESCAPE)) {
+		glfwSetWindowShouldClose(window, GLFW_TRUE);
+	}
+
+	if (is_key_down(GLFW_KEY_W)) {
+		vec3 scaled_front;
+		glm_vec3_scale(cam.forward, 2.0f * delta_time, scaled_front);
+		glm_vec3_add(cam.pos, scaled_front, cam.pos);
+	}
+
+	if (is_key_down(GLFW_KEY_S)) {
+		vec3 scaled_back;
+		glm_vec3_scale(cam.forward, 2.0f * delta_time, scaled_back);
+		glm_vec3_sub(cam.pos, scaled_back, cam.pos);
+	}
+
+		float sensitivity = 0.1f; // Tune this as needed
+
+		yaw   += input.mouse_delta_x * sensitivity;
+		pitch += input.mouse_delta_y * sensitivity;
+
+		if(pitch > 89.0f)
+			pitch =  89.0f;
+		if(pitch < -89.0f)
+			pitch = -89.0f;
+
+		cam.forward[0] = cos(glm_rad(yaw)) * cos(glm_rad(pitch));
+		cam.forward[1] = sin(glm_rad(pitch));
+		cam.forward[2] = sin(glm_rad(yaw)) * cos(glm_rad(pitch));
+		glm_normalize(cam.forward);
 		vec3 cam_target;
 		glm_vec3_add(cam.pos, cam.forward, cam_target);
 		glm_lookat(cam.pos, cam_target, cam.up, cam.view);
 
 		uint32_t view_location = glGetUniformLocation(shaders[SHADER_DEFAULT].id, "view");
 		glUniformMatrix4fv(view_location, 1, GL_FALSE, (const float*)cam.view);
-
-		//glm_rotate(model, 2.0f * delta_time, axis);
 
 		uint32_t model_location = glGetUniformLocation(shaders[SHADER_DEFAULT].id, "model");
 		glUniformMatrix4fv(model_location, 1, GL_FALSE, (const float*)model);
