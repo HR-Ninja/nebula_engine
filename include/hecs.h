@@ -8,8 +8,8 @@
 
 #define HAS_COMPONENT(mask, id) (((mask) & (1ULL << (id))) != 0)
 
-#define MAX_ENTITIES 20000
-#define MAX_COMPONENTS 64
+#define MAX_ENTITIES 50000
+#define MAX_COMPONENTS sizeof(uint64_t)
 
 typedef uint32_t Entity;
 typedef uint32_t Component;
@@ -37,13 +37,13 @@ void free_components();
 
 
 Entity create_entity() {
+
     if (free_count > 0) {
         return free_list[--free_count];
     }
 
     static Entity count = 0;
     assert(count < MAX_ENTITIES);
-
     return count++;
 }
 
@@ -53,7 +53,7 @@ void destroy_entity(Entity e) {
     // Remove all components by clearing mask
     Mask mask = entity_mask[e];
     for (Component c = 0; c < MAX_COMPONENTS; c++) {
-        if (mask & (1ULL << c)) {
+        if (HAS_COMPONENT(mask, c)) {
             remove_component(e, c);
         }
     }

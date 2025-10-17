@@ -31,6 +31,12 @@ static GLFWwindow* window;
 static InputState input;
 static float last_time;
 static float delta_time;
+static float accumulated_dt;
+const static float fixed_timestep = 0.02;
+
+static int screen_width = 800;
+static int screen_height = 600;
+static bool screen_has_resized = false;
 
 // -----------------------------------------------------------------------------------------------
 
@@ -40,6 +46,8 @@ void start_frame();
 void end_frame();
 void check_window();
 bool window_active();
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
@@ -74,37 +82,46 @@ void engine_init(const char* title, uint32_t width, uint32_t height) {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
+    screen_width = width;
+    screen_height = height;
     window = glfwCreateWindow(width, height, title, NULL, NULL);
 	check_window();
-
+    
 	glfwMakeContextCurrent(window);
-
+    
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
-		printf("Failed to initialize GLAD");
+        printf("Failed to initialize GLAD");
 		exit(-1);
 	}
-
+    
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    
     glfwSetKeyCallback(window, key_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
+    
+    glViewport(0, 0, width, height);
 }
 
 void start_frame() {
     float current_time = glfwGetTime();
     delta_time = current_time - last_time;
+    accumulated_dt += delta_time;
     last_time = current_time;
 
+    screen_has_resized = false;
+
 	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT);
 	glfwPollEvents();
-    update_input_state();
 }
 
 void end_frame() {
-	glfwSwapBuffers(window);
+    glfwSwapBuffers(window);
     input.mouse_delta_x = 0;
     input.mouse_delta_y = 0;
+    update_input_state();
 }
 
 bool window_active() {
@@ -161,15 +178,29 @@ void load_shader(Shader* s, const char* vert_src_path, const char* frag_src_path
 }
 
 void compile_shader(Shader* s, const char* vertexSource, const char* fragmentSource) {
-    // TODO: Added error checks
     uint32_t vertex, fragment;
     vertex = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertex, 1, &vertexSource, NULL);
     glCompileShader(vertex);
 
+    int success;
+    char infoLog[512];
+    glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(vertex, 512, NULL, infoLog);
+        fprintf(stderr, "Vertex shader compilation failed:\n%s\n", infoLog);
+    }
+
+
     fragment = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragment, 1, &fragmentSource, NULL);
     glCompileShader(fragment);
+
+    glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(fragment, 512, NULL, infoLog);
+        fprintf(stderr, "Fragment shader compilation failed:\n%s\n", infoLog);
+    }
 
     *s = glCreateProgram();
     glAttachShader(*s, vertex);
@@ -188,8 +219,8 @@ void use_shader(const Shader s) {
 }
 
 void check_location(uint32_t location) {
-    if (location == -1) {
-        printf("shader location not found");
+    if (location == (uint32_t)-1) {
+        printf("shader location not found\n");
     }
 }
 
@@ -203,7 +234,9 @@ void load_texture(Texture* t, const char* path) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+	GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+
 	glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -215,6 +248,13 @@ void bind_texture(const Texture t) {
     if (current_texture == t) { return; }
     glBindTexture(GL_TEXTURE_2D, t);
     current_texture = t;
+}
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+    screen_width = width;
+    screen_height = height;
+    glViewport(0, 0, width, height);
+    screen_has_resized = true;
 }
 
 void update_input_state() {
@@ -257,8 +297,10 @@ bool is_mouse_button_pressed(int btn) {
 }
 
 void print_fps() {
+    static float avg = 0;
+    avg = 0.9f * avg + 0.1f * delta_time;
     static int frame = 0;
-    if (++frame % 120 == 0) {
-        printf("FPS: %.2f\n", 1.0f / delta_time);
+    if (++frame % 60 == 0) {
+        printf("FPS: %.2f\n", 1.0f / avg);
     }
 }
