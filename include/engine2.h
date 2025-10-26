@@ -51,7 +51,7 @@ static inline end_render(GLFWwindow* window) {
 }
 
 
-extern bool engine_init(const GLFWwindow* window, const char* title, uint32_t width, uint32_t height);
+extern bool engine_init(GLFWwindow* window, const char* title, uint32_t width, uint32_t height);
 
 extern void start_frame();
 extern void end_frame();
@@ -60,21 +60,29 @@ extern void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 extern void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 extern void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 extern void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
-extern void update_input_state();
 
-extern bool is_key_down(int key);
-extern bool is_key_pressed(int key);
-extern bool is_key_released(int key);
+static inline bool is_key_down(int key)       { return g_input_state.keys[key]; }
+static inline bool is_key_pressed(int key)    { return g_input_state.keys[key] && !g_input_state.prev_keys[key]; }
+static inline bool is_key_released(int key)   { return !g_input_state.keys[key] && g_input_state.prev_keys[key]; }
+
+static inline bool is_mouse_button_pressed(int btn) {
+    return g_input_state.buttons[btn] && !g_input_state.prev_buttons[btn];
+}
+
+static inline void update_input_state() {
+    memcpy(g_input_state.prev_keys, g_input_state.keys, MAX_KEYS);
+    memcpy(g_input_state.prev_buttons, g_input_state.buttons, MAX_BUTTONS);
+}
 
 extern bool is_mouse_button_pressed(int btn);
 
+// Utils
 extern void print_fps();
 
 // Shaders
 extern bool load_shader(Shader* s, const char* vert_src_path, const char* frag_src_path);
-extern void compile_shader(Shader* s, const char* vertexSource, const char* fragmentSource);
+extern bool compile_shader(Shader* s, const char* vertexSource, const char* fragmentSource);
 extern void use_shader(const Shader s);
-extern void check_location(uint32_t location);
 
 // Textures
 extern bool load_texture(Texture* t, const char* path);

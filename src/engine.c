@@ -87,7 +87,7 @@ bool load_shader(Shader* s, const char* vert_src_path, const char* frag_src_path
         perror("Failed to allocate memory");
         fclose(vert);
         fclose(frag);
-        exit(-1);
+        return false;
     }
 
     fread(vert_buffer, 1, vert_length, vert);
@@ -98,7 +98,110 @@ bool load_shader(Shader* s, const char* vert_src_path, const char* frag_src_path
     frag_buffer[frag_length] = '\0';
     fclose(frag);
 
-    compile_shader(s, vert_buffer, frag_buffer);
+    if (!compile_shader(s, vert_buffer, frag_buffer)) {
+        free(vert_buffer);
+        free(frag_buffer);
+        return false;
+    }
+
     free(vert_buffer);
     free(frag_buffer);
+
+    return true;
+}
+
+bool compile_shader(Shader* s, const char* vertexSource, const char* fragmentSource) {
+    uint32_t vertex, fragment;
+
+    vertex = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex, 1, &vertexSource, NULL);
+    glCompileShader(vertex);
+
+    int success;
+    char infoLog[512];
+    glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(vertex, 512, NULL, infoLog);
+        fprintf(stderr, "Vertex shader compilation failed:\n%s\n", infoLog);
+        return false;
+    }
+
+
+    fragment = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment, 1, &fragmentSource, NULL);
+    glCompileShader(fragment);
+
+    glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(fragment, 512, NULL, infoLog);
+        fprintf(stderr, "Fragment shader compilation failed:\n%s\n", infoLog);
+        return false;
+    }
+
+    *s = glCreateProgram();
+    glAttachShader(*s, vertex);
+    glAttachShader(*s, fragment);
+    glLinkProgram(*s);
+
+    glDeleteShader(vertex);
+    glDeleteShader(fragment);
+    return true;
+}
+
+void use_shader(const Shader s) {
+    static Shader current_shader = 0;
+    if (current_shader == s) { return; }
+    glUseProgram(s);
+    current_shader = s;
+}
+
+void load_texture(Texture* t, const char* path) {
+    int width, height, nrChannels;
+	unsigned char *data = stbi_load(path, &width, &height, &nrChannels, 0); 
+
+	glGenTextures(1, t);
+	glBindTexture(GL_TEXTURE_2D, *t);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+
+	glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+	stbi_image_free(data);
+}
+
+void bind_texture(const Texture t) {
+    static Texture current_texture = 0;
+    if (current_texture == t) { return; }
+    glBindTexture(GL_TEXTURE_2D, t);
+    current_texture = t;
+}
+
+
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
+    static bool first_mouse = true;
+    if(first_mouse) {
+        g_input_state.mouse_x = xpos;
+        g_input_state.mouse_y = ypos;
+        first_mouse = false;
+    }
+
+    g_input_state.mouse_delta_x = xpos - g_input_state.mouse_x;
+    g_input_state.mouse_delta_y = g_input_state.mouse_y - ypos;
+
+    g_input_state.mouse_x = xpos;
+    g_input_state.mouse_y = ypos;
+}
+
+void print_fps() {
+    static float avg = 0;
+    avg = 0.9f * avg + 0.1f * delta_time;
+    static int frame = 0;
+    if (++frame % 60 == 0) {
+        printf("FPS: %.2f\n", 1.0f / avg);
+    }
 }
