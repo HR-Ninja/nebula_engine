@@ -63,11 +63,42 @@ void end_frame() {
     update_input_state();
 }
 
-void begin_render() {
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-}
+bool load_shader(Shader* s, const char* vert_src_path, const char* frag_src_path) {
+    FILE* vert = fopen(vert_src_path, "rb");
+    FILE* frag = fopen(frag_src_path, "rb");
 
-void end_render(GLFWwindow* window) {
-    glfwSwapBuffers(window);
+    if(!vert || !frag) {
+        perror("Failed to open file");
+        return false;
+    }
+
+    fseek(vert, 0, SEEK_END);
+    long vert_length = ftell(vert);
+    rewind(vert);   
+
+    fseek(frag, 0, SEEK_END);
+    long frag_length = ftell(frag);
+    rewind(frag);   
+
+    char* vert_buffer = (char*)malloc(vert_length + 1);
+    char* frag_buffer = (char*)malloc(frag_length + 1);
+
+    if (!vert_buffer || !frag_buffer) {
+        perror("Failed to allocate memory");
+        fclose(vert);
+        fclose(frag);
+        exit(-1);
+    }
+
+    fread(vert_buffer, 1, vert_length, vert);
+    vert_buffer[vert_length] = '\0';
+    fclose(vert);
+
+    fread(frag_buffer, 1, frag_length, frag);
+    frag_buffer[frag_length] = '\0';
+    fclose(frag);
+
+    compile_shader(s, vert_buffer, frag_buffer);
+    free(vert_buffer);
+    free(frag_buffer);
 }

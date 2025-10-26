@@ -41,13 +41,20 @@ static inline bool window_active(GLFWwindow* window) {
 	return !glfwWindowShouldClose(window);
 }
 
+static inline void begin_render() {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+}
+
+static inline end_render(GLFWwindow* window) {
+    glfwSwapBuffers(window);
+}
+
+
 extern bool engine_init(const GLFWwindow* window, const char* title, uint32_t width, uint32_t height);
 
 extern void start_frame();
 extern void end_frame();
-extern void begin_render();
-extern void end_render(GLFWwindow* window);
-
 
 extern void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 extern void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -64,13 +71,13 @@ extern bool is_mouse_button_pressed(int btn);
 extern void print_fps();
 
 // Shaders
-extern void load_shader(Shader* s, const char* vert_src_path, const char* frag_src_path);
+extern bool load_shader(Shader* s, const char* vert_src_path, const char* frag_src_path);
 extern void compile_shader(Shader* s, const char* vertexSource, const char* fragmentSource);
 extern void use_shader(const Shader s);
 extern void check_location(uint32_t location);
 
 // Textures
-extern void load_texture(Texture* t, const char* path);
+extern bool load_texture(Texture* t, const char* path);
 extern void bind_texture(const Texture t);
 
 #endif
