@@ -8,6 +8,7 @@
     "CMAKE_BUILD_TYPE": "Debug"
   },
   "files.associations": {
-    "cmath": "c"
+    "cmath": "c",
+    "cglm.h": "c"
   }
 }
