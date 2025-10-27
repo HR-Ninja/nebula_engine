@@ -1,15 +1,17 @@
 #define STB_IMAGE_IMPLEMENTATION
-#include "engine2.h"
+#include "engine.h"
 
 InputState g_input_state = {0};
+
+WindowState g_window_state = {
+    .screen_width = 800,
+    .screen_height = 600,
+    .screen_has_resized = false
+};
 
 float delta_time = 0.0f;
 float last_time = 0.0f;
 float accumulated_dt = 0.0f;
-
-int screen_width = 800;
-int screen_height = 600;
-bool screen_has_resized = false;
 
 bool engine_init(GLFWwindow* window, const char* title, uint32_t width, uint32_t height) {
     glfwInit();
@@ -17,8 +19,8 @@ bool engine_init(GLFWwindow* window, const char* title, uint32_t width, uint32_t
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    screen_width = width;
-    screen_height = height;
+    g_window_state.screen_width = width;
+    g_window_state.screen_height = height;
     window = glfwCreateWindow(width, height, title, NULL, NULL);
     
     if (window == NULL)
@@ -52,17 +54,40 @@ void start_frame() {
     accumulated_dt += delta_time;
     last_time = current_time;
 
-    screen_has_resized = false;
+    g_window_state.screen_has_resized = false;
 
 	glfwPollEvents();
 }
 
 void end_frame() {
-    g_input_state.mouse_delta_x = 0;
-    g_input_state.mouse_delta_y = 0;
     update_input_state();
 }
 
+// -- ## INPUT ## -- 
+inline void update_input_state() {
+    g_input_state.mouse_delta_x = 0;
+    g_input_state.mouse_delta_y = 0;
+    memcpy(g_input_state.prev_keys, g_input_state.keys, MAX_KEYS);
+    memcpy(g_input_state.prev_buttons, g_input_state.buttons, MAX_BUTTONS);
+}
+
+inline bool is_key_down(int key) {
+     return g_input_state.keys[key]; 
+}
+
+inline bool is_key_pressed(int key) {
+     return g_input_state.keys[key] && !g_input_state.prev_keys[key]; 
+}
+
+inline bool is_key_released(int key) {
+     return !g_input_state.keys[key] && g_input_state.prev_keys[key];
+}
+
+inline bool is_mouse_button_pressed(int btn) {
+    return g_input_state.buttons[btn] && !g_input_state.prev_buttons[btn];
+}
+
+// -- ## SHADERS ## -- 
 bool load_shader(Shader* s, const char* vert_src_path, const char* frag_src_path) {
     FILE* vert = fopen(vert_src_path, "rb");
     FILE* frag = fopen(frag_src_path, "rb");
@@ -155,7 +180,8 @@ void use_shader(const Shader s) {
     current_shader = s;
 }
 
-void load_texture(Texture* t, const char* path) {
+// -- ## TEXTURES ## -- 
+bool load_texture(Texture* t, const char* path) {
     int width, height, nrChannels;
 	unsigned char *data = stbi_load(path, &width, &height, &nrChannels, 0); 
 
@@ -181,7 +207,7 @@ void bind_texture(const Texture t) {
     current_texture = t;
 }
 
-
+// -- ## CALLBACKS ## -- 
 void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
     static bool first_mouse = true;
     if(first_mouse) {
@@ -197,6 +223,24 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
     g_input_state.mouse_y = ypos;
 }
 
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+    g_window_state.screen_width = width;
+    g_window_state.screen_height = height;
+    glViewport(0, 0, width, height);
+    g_window_state.screen_has_resized = true;
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key < 0 || key >= MAX_KEYS) return;
+    g_input_state.keys[key] = (action != GLFW_RELEASE);
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (button < 0 || button >= MAX_BUTTONS) return;
+    g_input_state.buttons[button] = (action != GLFW_RELEASE);
+}
+
+// -- ## UTILS ## -- 
 void print_fps() {
     static float avg = 0;
     avg = 0.9f * avg + 0.1f * delta_time;

@@ -1,4 +1,3 @@
-#define STB_IMAGE_IMPLEMENTATION
 #include "engine.h"
 
 #define CLAMP(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
